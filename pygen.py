@@ -60,6 +60,7 @@ class Target:
         self.project = project
         self.romRegions = []
         self.ramRegions = []
+        self.genhex = True
         self.miscopts = {}
         self.cwd = None
 
@@ -86,11 +87,16 @@ class Target:
                         print(colorama.Fore.RED + output + colorama.Style.RESET_ALL)
                         return status
         (status, output) = toolchain.link(self)
-        sys.stdout.write(colorama.Fore.GREEN + output + colorama.Style.RESET_ALL)
+        if status:
+            sys.stdout.write(colorama.Fore.GREEN)
+        else:
+            sys.stdout.write(colorama.Fore.RED)
+        sys.stdout.write(output + colorama.Style.RESET_ALL)
 
-        print("generating " + self.outputname + ".hex...")
-        elf = os.path.join(self.outputdir, self.outputname + ".elf")
-        (status, output) = toolchain.toHex(self, elf)
+        if self.genhex:
+            print("generating " + self.outputname + ".hex...")
+            elf = os.path.join(self.outputdir, self.outputname + ".elf")
+            (status, output) = toolchain.toHex(self, elf)
         return status
 
     def __str__(self):
@@ -113,17 +119,17 @@ class Target:
                 out += "\n"
             out += "\t\t\tStart: 0x" + format(region.start, "x") + "\n"
             out += "\t\t\tSize:  0x" + format(region.size, "x") + "\n"
-        out += "\t\tIncludes:\n"
+        out += "\tIncludes:\n"
         for d in self.includedirs:
-            out += "\t\t\t" + d + "\n"
-        out += "\t\tOutput: " + os.path.join(self.cwd, self.outputdir, self.outputname + ".hex") + "\n"
-        out += "\t\tOptions: "
+            out += "\t\t" + d + "\n"
+        out += "\tOutput: " + os.path.join(self.cwd, self.outputdir, self.outputname + ".hex") + "\n"
+        out += "\tOptions: "
         for o in self.compileroptions:
             out += o + " "
         out += "\n"
-        out += "\t\tDefines:\n"
+        out += "\tDefines:\n"
         for d in self.defines:
-            out += "\t\t\t" + d + "\n"
+            out += "\t\t" + d + "\n"
         out += "\n"
         for group in self.groups:
             out += "\tGroup " + str(group.name) + ":\n"
@@ -164,6 +170,7 @@ class Project:
             xmlcommon = xmltarget.find("TargetOption").find("TargetCommonOption")
             xmlmisc = xmltargetads.find("ArmAdsMisc")
             xmlmemories = xmlmisc.find("OnChipMemories")
+            target.genhex = (xmlcommon.find("CreateHexFile").text == "1")
 
             if xmlmisc.find("Ir1Chk").text == "1":
                 target.romRegions.append(Region(int(xmlmemories.find("OCR_RVCT4").find("StartAddress").text, 16),
