@@ -9,6 +9,7 @@ from json import encoder, decoder
 import os.path
 import exceptions
 import sys
+import colorama
 
 LANG_EXT_C = ["c", "h"]
 LANG_EXT_CPP = ["cpp", "hpp", "cc"]
@@ -81,10 +82,10 @@ class Target:
                     os.path.getmtime(outfile) < os.path.getmtime(os.path.join(self.cwd, f.path)):
                     (status, output) = toolchain.compile(self, f)
                     if not status:
-                        print(output)
+                        print(colorama.Fore.RED + output + colorama.Style.RESET_ALL)
                         return status
         (status, output) = toolchain.link(self)
-        sys.stdout.write(output)
+        sys.stdout.write(colorama.Fore.GREEN + output + colorama.Style.RESET_ALL)
 
         print("generating " + self.outputname + ".hex...")
         elf = os.path.join(self.outputdir, self.outputname + ".elf")
@@ -192,7 +193,7 @@ class Project:
             xmlcadsvarious = xmlcads.find("VariousControls")
             misccontrol = xmlcadsvarious.find("MiscControls").text
             if misccontrol:
-                target.compileroptions = [misccontrol]
+                target.compileroptions = misccontrol.split()
             target.compileroptions.append("-O" + str(int(xmlcads.find("Optim").text) - 1))
             warnlevel = int(xmlcads.find("wLevel").text)
             if warnlevel is 1:
@@ -201,7 +202,6 @@ class Project:
                 target.miscopts["warning"] = "all"
             if xmlcads.find("uC99").text == "1":
                 target.compileroptions.append("--c99")
-            target.outputdir = xmlcommon.find("OutputDirectory").text
             target.outputname = xmlcommon.find("OutputName").text
 
             target.includedirs = xmlcadsvarious.find("IncludePath").text.split(";")
@@ -210,6 +210,7 @@ class Project:
             target.cwd = os.path.dirname(os.path.abspath(filename))
             if not target.cwd:
                 target.cwd = os.path.dirname(os.path.join(os.curdir, filename))
+            target.outputdir = os.path.join(target.cwd, xmlcommon.find("OutputDirectory").text)
 
     def __str__(self):
         out = "Project " + self.name + ":\n"
@@ -218,9 +219,55 @@ class Project:
                 out += "\t" + line + "\n"
         return out
 
+def findroot(cwd):
+    path = os.path.abspath(cwd)
+    while not os.path.dirname(path) == path:
+        if ".git" in os.listdir(path):
+            return os.path.abspath(path)
+        path = os.path.dirname(path)
+    return None
 
-p = Project()
-p.parseUV(sys.argv[1])
-#print p
-p.buildAll(ToolchainARMCC("C:\\Keil_v5\\ARM\\ARMCC\\"))
+def findUVprojects(root):
+    if not root:
+        return None
+    projs = []
+    def walkcb(projs, dirname, names):
+        projs += [os.path.join(dirname, name) for name in names if name.endswith(".uvprojx")]
+
+    #walkcb(projs, root, os.listdir(root)) # do the root first
+    for d in os.listdir(root):
+        d = os.path.join(root, d)
+        if os.path.isdir(d) and os.path.basename(d) != ".git":
+            os.path.walk(d, walkcb, projs)
+    return projs
+
+
+if __name__ == "__main__":
+    colorama.init()
+    root = findroot(".")
+    projects = findUVprojects(root)
+    while True:
+        for (i,p) in enumerate(projects):
+            liststr = str(i + 1) + ": " + os.path.basename(p).split(".")[0]
+            liststr += (40 - len(liststr)) * " "
+            liststr += colorama.Fore.BLUE + "(" + os.path.relpath(p, root) + ")" + colorama.Style.RESET_ALL
+            print liststr
+        choice = -1
+        while choice < 0 or choice > len(projects):
+            print "Enter a valid project to build"
+            choice = int(sys.stdin.readline())
+
+        print "You chose " + str(choice) + ": " + os.path.relpath(projects[choice - 1], root)
+
+        p = Project()
+        p.parseUV(projects[choice - 1])
+        for (i, target) in enumerate(p.targets):
+            print str(i + 1) + ": " + target.name
+        choice = -1
+        while choice < 0 or choice > len(p.targets):
+            print "Enter a valid target to build"
+            choice = int(sys.stdin.readline())
+        print "You chose " + str(choice) + ": " + p.targets[choice - 1].name
+        p.targets[choice - 1].build(ToolchainARMCC("C:\\Keil_v5\\ARM\\ARMCC\\"))
+        print 80 * "="
 

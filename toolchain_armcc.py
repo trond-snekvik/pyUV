@@ -21,7 +21,7 @@ class ToolchainARMCC(Toolchain):
 #nordic specific stuffz
         nordicdir = os.path.join(packfolder, "NordicSemiconductor")
         try:
-            nordicdir = os.path.join(nordicdir, [d for d in os.listdir(nordicdir)][-1])
+            nordicdir = os.path.join(nordicdir, "nRF_DeviceFamilyPack")
             nordicdir = os.path.join(nordicdir, [d for d in os.listdir(nordicdir)][-1])
             nordicdir = os.path.join(nordicdir, "Device", "Include")
             if not os.path.exists(nordicdir):
