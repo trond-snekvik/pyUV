@@ -6,6 +6,7 @@ import subprocess
 import os.path
 import exceptions
 import sys
+import colorama
 
 class Toolchain:
     def __init__(self, name):
@@ -85,12 +86,12 @@ class Toolchain:
         args = [self.LD] + self.linkflags + objects
         if self.options["map"]:
             args.append(self.options["map"])
-            args.append(os.path.join(target.outputdir, target.outputname + ".map"))
+            args.append(os.path.join(os.path.relpath(target.outputdir, target.cwd), target.outputname + ".map"))
         if self.options["linker"]:
             args.append(self.options["linker"])
-            args.append(os.path.join(target.outputdir, target.outputname + "." + self.linkerfileext))
+            args.append(os.path.join(os.path.relpath(target.outputdir, target.cwd), target.outputname + "." + self.linkerfileext))
         args.append("-o")
-        args.append(os.path.join(target.outputdir, target.outputname + ".elf"))
+        args.append(os.path.join(os.path.relpath(target.outputdir, target.cwd), target.outputname + ".elf"))
 
         if verbose:
             verbosestring = ""
