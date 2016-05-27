@@ -32,6 +32,9 @@ class SourceFile:
     def __init__(self, path):
         self.name = os.path.basename(path)
         self.path = path
+        self.romRegion = None
+        self.ramRegion = None
+        self.ziRegion = None
 
     def language(self):
         ext = self.name.lower().split(".")[-1]
@@ -64,6 +67,13 @@ class Target:
         self.miscopts = {}
         self.cwd = None
 
+    def allFiles(self):
+        files = []
+        for g in self.groups:
+            for f in g.files:
+                files.append(f)
+        return files
+
     def build(self, toolchain):
         (status, output) = toolchain.scatterGen(self)
         if not os.path.exists(self.outputdir):
@@ -86,10 +96,11 @@ class Target:
                     if not status:
                         print(colorama.Fore.RED + output + colorama.Style.RESET_ALL)
                         return status
+                    elif len(output) > 0:
+                        print(output)
+
         (status, output) = toolchain.link(self)
-        if status:
-            sys.stdout.write(colorama.Fore.GREEN)
-        else:
+        if not status:
             sys.stdout.write(colorama.Fore.RED)
         sys.stdout.write(output + colorama.Style.RESET_ALL)
 
@@ -193,10 +204,29 @@ class Project:
             for xmlgroup in xmltarget.find("Groups").findall("Group"):
                 group = SourceGroup(xmlgroup.find("GroupName").text)
                 for xmlfile in xmlgroup.find("Files").findall("File"):
-                    group.files.append(SourceFile(str(os.path.join(os.path.dirname(filename), xmlfile.find("FilePath").text))))
+                    sf = SourceFile(str(os.path.join(os.path.dirname(filename), xmlfile.find("FilePath").text)))
+                    sf.romRegion = target.romRegions[0]
+                    sf.ziRegion = target.ramRegions[0]
+                    sf.ramRegion = target.ramRegions[0]
+                    if xmlfile.find("FileOption") is not None:
+                        xmlfileoptions = xmlfile.find("FileOption").find("CommonProperty")
+                        constsec = xmlfileoptions.find("RVCTCodeConst").text
+                        zisec    = xmlfileoptions.find("RVCTZI").text
+                        othersec = xmlfileoptions.find("RVCTOtherData").text
+                        if constsec == "5":
+                            sf.romRegion = target.romRegions[1]
+                        if zisec == "5":
+                            sf.ziRegion = target.ramRegions[1]
+                        if othersec == "5":
+                            sf.ramRegion = target.ramRegions[1]
+                    else:
+                        sf.region = target.romRegions[0]
+                    group.files.append(sf)
                 target.groups.append(group)
             self.targets.append(target)
 
+            if xmlmisc.find("useUlib").text == "1":
+                target.compileroptions.append("--library_type=microlib")
             xmlcads = xmltargetads.find("Cads")
             xmlcadsvarious = xmlcads.find("VariousControls")
             misccontrol = xmlcadsvarious.find("MiscControls").text
