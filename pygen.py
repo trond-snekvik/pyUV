@@ -104,7 +104,7 @@ class Target:
             sys.stdout.write(colorama.Fore.RED)
         sys.stdout.write(output + colorama.Style.RESET_ALL)
 
-        if self.genhex:
+        if status and self.genhex:
             print("generating " + self.outputname + ".hex...")
             elf = os.path.join(self.outputdir, self.outputname + ".elf")
             (status, output) = toolchain.toHex(self, elf)
