@@ -7,11 +7,8 @@ from toolchain_armcc import *
 import hashlib
 import binascii
 import json
+import session
 
-gFilter = ""
-tempstore = ""
-gProject = ""
-gTarget = ""
 
 def store(dictionary):
     j = None
@@ -49,22 +46,20 @@ def task_flash(target):
     hexfile = os.path.join(target.cwd, target.outputdir, target.outputname + ".hex")
     if os.path.exists(hexfile):
         args = ["C:\\Users\\trsn\\bin\\prog.bat", hexfile]
-        if gFilter != "":
-            args += ["-s", gFilter]
+        if "filter" in session:
+            args += ["-s", session["filter"]]
         subprocess.call(args)
     else:
         print("ERROR: Invalid hex file " + hexfile)
 
 def task_set_device(_):
     sys.stdout.write("Set device filter: ")
-    gFilter = sys.stdin.readline().splitlines()[0]
+    session["filter"] = sys.stdin.readline().splitlines()[0]
     if len(gFilter) is 0:
-        gFilter = ""
+        session.pop("filter")
         print("Device filter disabled.")
     else:
-        print("Filter is " + gFilter)
-    store({"filter": gFilter})
-
+        print("Filter is " + session["filter"])
 
 def select(optlist, query="", default = -1):
     for (i, option) in enumerate(optlist):
@@ -90,32 +85,20 @@ def select(optlist, query="", default = -1):
 if __name__ == "__main__":
     colorama.init()
     root = pygen.findroot(".")
-    h = hashlib.new("SHA1")
-    h.update(root)
-    tempstore = os.path.join(os.environ["TEMP"], binascii.hexlify(h.digest())[:16] + ".json")
+    session = session.Session(root)
     # load settings
-    if os.path.exists(tempstore):
-        with open(tempstore, "r") as f:
-            options = json.load(f)
-            print "Session loaded:"
-            for key in options.keys():
-                if len(key) > 0 and len(options[key]) > 0:
-                    print key + ": " + options[key]
-            if "project" in options.keys():
-                gProject = options["project"]
-            if "target" in options.keys():
-                gTarget = options["target"]
-            if "filter" in options.keys():
-                gFilter = options["filter"]
-        print colorama.Fore.CYAN + 80 * "=" + colorama.Style.RESET_ALL
+    if len(session.options) > 0:
+        print "Session loaded:"
+        for option in session:
+            print option + ": " + session[option]
 
-
-    projects = pygen.findUVprojects(root)
+    if not "project" in session:
+        projects = pygen.findUVprojects(root)
     while True:
         maxlen = 0
         p = pygen.Project()
 
-        if gProject == "":
+        if not "project" in session:
             for proj in projects:
                 baselen = len(os.path.basename(proj).split(".")[0])
                 if baselen > maxlen:
@@ -126,19 +109,18 @@ if __name__ == "__main__":
                 liststr += (maxlen + 5 - len(liststr)) * " "
                 liststr += colorama.Fore.CYAN + "(" + os.path.relpath(proj, root) + ")" + colorama.Style.RESET_ALL
                 projlist.append(liststr)
-            gProject = projects[select(projlist, "Select a valid project: ")]
-            store({"project": gProject})
+            session["project"] = projects[select(projlist, "Select a valid project: ")]
+            session.pop("target")
 
-        p.parseUV(gProject)
+        p.parseUV(session["project"])
 
-        if gTarget == "" or not gTarget in [t.name for t in p.targets]:
+        if not "target" in session or not session["target"] in [t.name for t in p.targets]:
             target = p.targets[select([target.name for target in p.targets], "Select a valid target: ")]
-            gTarget = target.name
-            store({"target": gTarget})
+            session["target"] = target.name
             print target.name
         else:
             for t in p.targets:
-                if gTarget == t.name:
+                if session["target"] == t.name:
                     target = t
                     break
         cont = True
@@ -160,8 +142,8 @@ if __name__ == "__main__":
                 print "Going back"
                 print colorama.Fore.CYAN + 80 * "=" + colorama.Style.RESET_ALL
                 cont = False
-                gProject = ""
-                gTarget = ""
+                session.pop("project")
+                session.pop("target")
             elif task == "quit":
                 exit()
 

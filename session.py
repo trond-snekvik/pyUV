@@ -13,14 +13,25 @@ class Session:
         h.update(self.directory)
         self.tempstore = path.join(environ["TEMP"], binascii.hexlify(h.digest())[:16] + ".json")
         if path.exists(self.tempstore):
-            print self.tempstore
             with open(self.tempstore, "r") as f:
                 self.options = json.load(f)
 
+    def __getitem__(self,index):
+        return self.options[index]
 
-    def set(self, key, value):
-        self.options[key] = value
+    def __setitem__(self, key, val):
+        self.options[key] = val
         self.store()
+
+    def __contains__(self, item):
+        return (item in self.options.keys())
+
+    def __iter__(self):
+        return list.__iter__(self.options.keys())
+
+    def pop(self, key, default=None):
+        return self.options.pop(key, default)
+
 
     def store(self):
         j = None
