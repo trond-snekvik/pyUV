@@ -74,6 +74,14 @@ class Target:
                 files.append(f)
         return files
 
+    def addIncludeDir(self, includeDir):
+        for i in self.includedirs:
+            if i == includeDir:
+                raise ValueError("Include dir " + includeDir + " already exists.")
+        self.includedirs.append(includeDir)
+        self.save()
+
+
     def build(self, toolchain):
         (status, output) = toolchain.scatterGen(self)
         if not os.path.exists(self.outputdir):
@@ -109,6 +117,10 @@ class Target:
             elf = os.path.join(self.outputdir, self.outputname + ".elf")
             (status, output) = toolchain.toHex(self, elf)
         return status
+
+    def save(self):
+        pass
+
 
     def __str__(self):
         out = "Target " + self.name + ":\n"
@@ -173,6 +185,7 @@ class Project:
             print "Can't find file " + filename
             return False
 
+        self.uvfile = filename
         tree = xml.parse(filename).getroot()
         self.name = os.path.basename(filename.split(".")[0])
         for xmltarget in tree.find("Targets"):
@@ -256,6 +269,10 @@ class Project:
             for line in str(target).splitlines():
                 out += "\t" + line + "\n"
         return out
+
+    def save(self):
+        pass
+
 
 def findroot(cwd):
     path = os.path.abspath(cwd)
