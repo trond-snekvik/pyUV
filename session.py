@@ -30,7 +30,9 @@ class Session:
         return list.__iter__(self.options.keys())
 
     def pop(self, key, default=None):
-        return self.options.pop(key, default)
+        retval = self.options.pop(key, default)
+        store()
+        return retval
 
 
     def store(self):

@@ -8,7 +8,9 @@ import hashlib
 import binascii
 import json
 import session
+import nrfmultiprog
 
+root = ""
 
 def store(dictionary):
     j = None
@@ -23,10 +25,10 @@ def store(dictionary):
         with open(tempstore, "w") as f:
             f.write(json.JSONEncoder().encode(dictionary))
 
-def task_build(target):
+def task_build(target, session):
     target.build(ToolchainARMCC("C:\\Keil_v5\\ARM\\ARMCC\\"))
 
-def task_clean(target):
+def task_clean(target, session):
     if not os.path.exists(os.path.join(target.cwd, target.outputdir)):
         print "Clean failed: Outputdir already cleaned."
     else:
@@ -39,20 +41,20 @@ def task_clean(target):
             print "Clean failed:"
             print e
 
-def task_print(target):
+def task_print(target, session):
     print str(target)
 
-def task_flash(target):
+def task_flash(target, session):
     hexfile = os.path.join(target.cwd, target.outputdir, target.outputname + ".hex")
     if os.path.exists(hexfile):
-        args = ["C:\\Users\\trsn\\bin\\prog.bat", hexfile]
+        devfilter = None
         if "filter" in session:
-            args += ["-s", session["filter"]]
-        subprocess.call(args)
+            devfilter = session["filter"]
+        out = nrfmultiprog.program(hexfile, devfilter)
     else:
         print("ERROR: Invalid hex file " + hexfile)
 
-def task_set_device(_):
+def task_set_device(_, session):
     sys.stdout.write("Set device filter: ")
     session["filter"] = sys.stdin.readline().splitlines()[0]
     if len(gFilter) is 0:
@@ -60,6 +62,63 @@ def task_set_device(_):
         print("Device filter disabled.")
     else:
         print("Filter is " + session["filter"])
+
+def task_not_available(_,__):
+    print("Not available.")
+
+def task_edit_defines(target, session):
+    pass
+
+def task_edit_sourcefiles(target, session):
+    global root
+    groups = {}
+    for group in target.groups:
+        groups[group.name] = group
+    while True:
+        groupoptions = groups.keys()
+        groupoptions.append("CANCEL")
+        choice = select(groupoptions, "Select a source group: ")
+        if choice is len(groups):
+            break
+        group = groups.items()[choice][1]
+        print("GROUP " + group.name)
+
+        while True:
+            tasks = ["add", "remove", "print", "back"]
+            task = tasks[select(tasks, "Action: ")]
+            if task == "add":
+                sys.stdout.write("Path (relative to root): ")
+                path = os.path.normpath(os.path.join(root, sys.stdin.readline().splitlines()[0]))
+                if not os.path.exists(path):
+                    print(colorama.Fore.RED + "Invalid path " + path + colorama.Style.RESET_ALL)
+                else:
+                    group.files.append(pygen.SourceFile(path))
+                    print("File " + path + " added.")
+            elif task == "remove":
+                files = {}
+                for f in group.files:
+                    files[f.name] = f
+                f = files.items()[select(files.keys(), "Select a file: ")][1]
+                group.files.remove(f)
+                print("Removed " + f.name)
+            elif task == "print":
+                print("Group \"" + group.name + "\"")
+                for f in group.files:
+                    print("\t" + os.path.relpath(f.path, root))
+            else:
+                target.saveGroup(group)
+                break
+
+
+
+def task_edit(target, session):
+    tasks = {"includes": task_not_available,
+        "defines": task_not_available,
+        "source files": task_edit_sourcefiles,
+        "regions": task_not_available}
+    tasks.items()[select(tasks.keys(), "Edit what? ")][1](target, session)
+
+
 
 def select(optlist, query="", default = -1):
     for (i, option) in enumerate(optlist):
@@ -79,10 +138,12 @@ def select(optlist, query="", default = -1):
             choice = int(choicestr)
         except ValueError:
             choice = -1
+    print("")
     return choice - 1
 
 
 if __name__ == "__main__":
+    global root
     colorama.init()
     root = pygen.findroot(".")
     session = session.Session(root)
@@ -132,12 +193,12 @@ if __name__ == "__main__":
             print titlestr
             print 80 * "=" + colorama.Style.RESET_ALL
 
-            tasks = ["build", "clean", "print", "set device filter", "flash", "back", "quit"]
-            functions = {"build": task_build, "clean": task_clean, "print": task_print, "flash": task_flash, "set device filter": task_set_device}
+            tasks = ["build", "clean", "print", "set device filter", "flash", "edit", "back", "quit"]
+            functions = {"build": task_build, "clean": task_clean, "print": task_print, "flash": task_flash, "set device filter": task_set_device, "edit": task_edit}
             prevchoice = select(tasks, "What's next? ", prevchoice)
             task = tasks[prevchoice]
             if task in functions.keys():
-                functions[task](target)
+                functions[task](target, session)
             elif task == "back":
                 print "Going back"
                 print colorama.Fore.CYAN + 80 * "=" + colorama.Style.RESET_ALL

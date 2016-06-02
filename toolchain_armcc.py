@@ -39,6 +39,38 @@ class ToolchainARMCC(Toolchain):
         self.OBJCOPY = os.path.join(armccFolder, "bin", "fromelf.exe")
         self.SIZE = os.path.join(armccFolder, "bin", "armar.exe")
 
+    def genDepList(self, target, sourcefile):
+        language = sourcefile.language()
+        if language is "c":
+            args = [self.CC] + self.cflags
+            args += target.compileroptions
+            for d in target.defines:
+                args.append("-D" + d)
+        elif language is "asm":
+            args = [self.AS] + self.asmflags
+        else:
+            return []
+
+        for i in self.includedirs:
+            args.append("-I"+i)
+
+        for i in target.includedirs:
+            args.append("-I"+i)
+        args.append("-M")
+        args.append(sourcefile.path)
+        popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
+        (out,err) = popen.communicate()
+        if popen.returncode != 0 or out is None:
+            return []
+        deps = []
+        for line in out.splitlines():
+            dep = line[line.find(":") + 2:]
+            if not os.path.abspath(dep) == os.path.normpath(dep):
+                deps.append(dep)
+        return deps
+
+
+
     def scatterGen(self, target):
         """
         Generate content text for a scatterfile for the given target.

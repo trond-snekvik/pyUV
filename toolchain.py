@@ -109,6 +109,13 @@ class Toolchain:
 
         return (True, err)
 
+    def genDepList(self, target, sourcefile):
+        """
+        Generate a list of paths upon which the given file depends on.
+        returns a list of absolute paths.
+        """
+        raise NotImplementedError("Generic toolchain class does not implement genDepList(). Please specify a toolchain.")
+
     def toHex(self, target, elf):
         """
         Generate hex-file from elf.

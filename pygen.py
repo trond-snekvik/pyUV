@@ -27,7 +27,6 @@ class Region:
         self.memtype = memtype
         self.init = init
 
-
 class SourceFile:
     def __init__(self, path):
         self.name = os.path.basename(path)
@@ -67,6 +66,38 @@ class Target:
         self.miscopts = {}
         self.cwd = None
 
+    def saveGroup(self, group):
+        if not group in self.groups:
+            raise ValueError("Group " + group.name + " not in target " + self.name)
+        tree = xml.parse(self.project.uvfile)
+        root = tree.getroot()
+        for xmltarget in root.find("Targets"):
+            if xmltarget.find("TargetName").text == self.name:
+                for xmlgroup in xmltarget.find("Groups").findall("Group"):
+                    if xmlgroup.find("GroupName").text == group.name:
+                        files = xmlgroup.find("Files").findall("File")
+                        sessionnames = [f.name for f in group.files]
+                        # remove files
+                        for xmlfile in files:
+                            if not xmlfile.find("FileName").text in sessionnames:
+                                xmlgroup.find("Files").remove(xmlfile)
+                        filenames = [f.find("FileName").text for f in files]
+                        # add files
+                        for f in group.files:
+                            if not f.name in filenames:
+                                xmlfile = xml.SubElement(xmlgroup.find("Files"), "File")
+                                xml.SubElement(xmlfile, "FileName").text = f.name
+                                xml.SubElement(xmlfile, "FileType").text = "1"
+                                xml.SubElement(xmlfile, "FilePath").text = os.path.relpath(f.path, os.path.dirname(self.project.uvfile))
+                                print f.path
+                        break
+                break
+        tree.write(self.project.uvfile)
+
+
+
+
+
     def allFiles(self):
         files = []
         for g in self.groups:
@@ -87,17 +118,26 @@ class Target:
                     self.outputname + "." + toolchain.linkerfileext), "w") as f:
                 f.write(output)
 
+        build_failed = False
         for g in self.groups:
             for f in g.files:
                 outfile = os.path.join(self.cwd, self.outputdir, f.name.split(".")[0] + ".o")
-                if not os.path.exists(outfile) or \
-                    os.path.getmtime(outfile) < os.path.getmtime(os.path.join(self.cwd, f.path)):
+                outdated = False
+                if os.path.exists(outfile):
+                    #for dep in toolchain.genDepList(self, f):
+                    dep = f.path
+                    if os.path.getmtime(outfile) < os.path.getmtime(os.path.join(os.path.dirname(self.project.uvfile), dep)):
+                        outdated = True
+                if not os.path.exists(outfile) or outdated:
                     (status, output) = toolchain.compile(self, f)
                     if not status:
                         print(colorama.Fore.RED + output + colorama.Style.RESET_ALL)
-                        return status
+                        build_failed = True # Still keep going.
                     elif len(output) > 0:
                         print(output)
+        if build_failed:
+            print("Build failed, unable to link project.")
+            return 1
 
         (status, output) = toolchain.link(self)
         if not status:
@@ -172,6 +212,7 @@ class Project:
         if not os.path.exists(filename):
             print "Can't find file " + filename
             return False
+        self.uvfile = filename
 
         tree = xml.parse(filename).getroot()
         self.name = os.path.basename(filename.split(".")[0])
@@ -249,6 +290,27 @@ class Project:
             if not target.cwd:
                 target.cwd = os.path.dirname(os.path.join(os.curdir, filename))
             target.outputdir = os.path.join(target.cwd, xmlcommon.find("OutputDirectory").text)
+
+    def save(self):
+        tree = xml.parse(self.uvfile).getroot()
+        for (i, xmltarget) in enumerate(tree.find("Targets")):
+            target = self.targets[i]
+            xmltargetads = xmltarget.find("TargetOption").find("TargetArmAds")
+            xmlcommon = xmltarget.find("TargetOption").find("TargetCommonOption")
+            xmlmisc = xmltargetads.find("ArmAdsMisc")
+            xmlmemories = xmlmisc.find("OnChipMemories")
+            xmlcads = xmltargetads.find("Cads")
+            xmlcadsvarious = xmlcads.find("VariousControls")
+            misccontrol = xmlcadsvarious.find("MiscControls").text
+            istr = target.includedirs[0]
+            if len(target.includedirs) > 1:
+                for i in target.includedirs[1:]:
+                    istr += ";" + i
+            xmlcadsvarious.find("IncludePath").text = istr
+
+
+
+
 
     def __str__(self):
         out = "Project " + self.name + ":\n"
