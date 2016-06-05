@@ -50,7 +50,7 @@ class Toolchain:
             args.append("-I"+i)
         args.append("-o")
         args.append(os.path.join(target.outputdir, sourcefile.name.split(".")[0] + ".o"))
-        args.append(sourcefile.path)
+        args.append(os.path.relpath(sourcefile.path, target.cwd))
 
         if verbose:
             verbosestring = ""
