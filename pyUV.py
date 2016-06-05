@@ -48,8 +48,11 @@ def task_flash(target, session):
     hexfile = os.path.join(target.cwd, target.outputdir, target.outputname + ".hex")
     if os.path.exists(hexfile):
         devfilter = None
+        sys.stdout.write("Flashing " + os.path.basename(hexfile))
         if "filter" in session:
             devfilter = session["filter"]
+            sys.stdout.write(" with filter " + devfilter)
+        print("")
         out = nrfmultiprog.program(hexfile, devfilter)
     else:
         print("ERROR: Invalid hex file " + hexfile)
