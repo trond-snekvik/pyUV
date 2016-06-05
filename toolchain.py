@@ -56,9 +56,9 @@ class Toolchain:
             verbosestring = ""
             for a in args:
                 verbosestring += a + " "
-            sys.stdout.write(verbosestring + "\n")
+            print(verbosestring)
         else:
-            sys.stdout.write("compiling " + sourcefile.name + "...\n")
+            print("compiling " + sourcefile.name + "...")
 
         out = ""
         #try:
