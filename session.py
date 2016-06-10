@@ -31,7 +31,7 @@ class Session:
 
     def pop(self, key, default=None):
         retval = self.options.pop(key, default)
-        store()
+        self.store()
         return retval
 
 

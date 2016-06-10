@@ -60,7 +60,7 @@ def task_flash(target, session):
 def task_set_device(_, session):
     sys.stdout.write("Set device filter: ")
     session["filter"] = sys.stdin.readline().splitlines()[0]
-    if len(gFilter) is 0:
+    if len(session["filter"]) is 0:
         session.pop("filter")
         print("Device filter disabled.")
     else:
@@ -156,8 +156,7 @@ if __name__ == "__main__":
         for option in session:
             print option + ": " + session[option]
 
-    if not "project" in session:
-        projects = pygen.findUVprojects(root)
+    projects = pygen.findUVprojects(root)
     while True:
         maxlen = 0
         p = pygen.Project()

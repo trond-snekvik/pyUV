@@ -114,6 +114,9 @@ class Target:
 
 
     def build(self, toolchain):
+        def compileThread(target, sourcelist):
+            pass
+
         (status, output) = toolchain.scatterGen(self)
         if not os.path.exists(self.outputdir):
             os.mkdir(self.outputdir)
@@ -144,7 +147,7 @@ class Target:
                     elif len(output) > 0:
                         print(output)
         if build_failed:
-            print("Build failed, unable to link project.")
+            print(colorama.Fore.RED + "Build failed, unable to link project." + colorama.Style.RESET_ALL)
             return 1
 
         (status, output) = toolchain.link(self)
@@ -188,6 +191,10 @@ class Target:
         out += "\tOutput: " + os.path.join(self.cwd, self.outputdir, self.outputname + ".hex") + "\n"
         out += "\tOptions: "
         for o in self.compileroptions:
+            out += o + " "
+        out += "\n"
+        out += "\tLinker options: "
+        for o in self.linkeroptions:
             out += o + " "
         out += "\n"
         out += "\tDefines:\n"
@@ -235,6 +242,7 @@ class Project:
             xmlcommon = xmltarget.find("TargetOption").find("TargetCommonOption")
             xmlmisc = xmltargetads.find("ArmAdsMisc")
             xmlmemories = xmlmisc.find("OnChipMemories")
+            xmlld = xmltargetads.find("LDads")
             target.genhex = (xmlcommon.find("CreateHexFile").text == "1")
 
             if xmlmisc.find("Ir1Chk").text == "1":
@@ -278,6 +286,11 @@ class Project:
                     group.files.append(sf)
                 target.groups.append(group)
             self.targets.append(target)
+
+            linkeropts = xmlld.find("Misc").text
+            if linkeropts:
+                for ldopt in linkeropts.split(" "):
+                    target.linkeroptions.append(ldopt)
 
             if xmlmisc.find("useUlib").text == "1":
                 target.compileroptions.append("--library_type=microlib")

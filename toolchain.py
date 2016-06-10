@@ -26,50 +26,60 @@ class Toolchain:
         self.OBJCOPY = None
         self.SIZE = None
 
-    def compile(self, target, sourcefile, verbose=False):
+    def compile(self, target, sourcefiles, verbose=False):
         """
         Compile a single source file.
         Returns a tuple of (Success (True/False), output)
         """
-        output = ""
-        language = sourcefile.language()
-        if language is "c":
-            args = [self.CC] + self.cflags
-            args += target.compileroptions
-            for d in target.defines:
-                args.append("-D" + d)
-        elif language is "asm":
-            args = [self.AS] + self.asmflags
-        else:
-            return (False, "Unsupported language " + language)
+        retval = True
 
-        for i in self.includedirs:
-            args.append("-I"+i)
+        # force argument to become a list
+        if sourcefiles.__class__ != list:
+            sourcefiles = [sourcefiles]
 
-        for i in target.includedirs:
-            args.append("-I"+i)
-        args.append("-o")
-        args.append(os.path.join(target.outputdir, sourcefile.name.split(".")[0] + ".o"))
-        args.append(os.path.relpath(sourcefile.path, target.cwd))
+        for sourcefile in sourcefiles:
+            language = sourcefile.language()
+            if language is "c":
+                args = [self.CC] + self.cflags
+                args += target.compileroptions
+                for d in target.defines:
+                    args.append("-D" + d)
+            elif language is "asm":
+                args = [self.AS] + self.asmflags
+            else:
+                return (False, "Unsupported language " + language)
 
-        if verbose:
-            verbosestring = ""
-            for a in args:
-                verbosestring += a + " "
-            sys.stdout.write(verbosestring + "\n")
-        else:
-            sys.stdout.write("compiling " + sourcefile.name + "...\n")
+            for i in self.includedirs:
+                args.append("-I"+i)
 
-        out = ""
-        #try:
-        popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
-        (out,err) = popen.communicate()
-        if popen.returncode != 0:
-            return (False, err)
+            for i in target.includedirs:
+                args.append("-I"+i)
+            args.append("-o")
+            args.append(os.path.join(target.outputdir, sourcefile.name.split(".")[0] + ".o"))
+            args.append(os.path.relpath(sourcefile.path, target.cwd))
+
+            if verbose:
+                verbosestring = ""
+                for a in args:
+                    verbosestring += a + " "
+                output = verbosestring
+            else:
+                output = colorama.Fore.CYAN + "compiling " + sourcefile.name + "...\n" + colorama.Style.RESET_ALL
+
+            #try:
+            popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
+            (out,err) = popen.communicate()
+            if popen.returncode != 0:
+                retval = False
+            if len(err) > 0:
+                output += err
+            elif len(out) > 0:
+                output += out
+            sys.stdout.write(output)
         #except Exception as e:
         #    print args
         #    return (False, e)
-        return (True, out)
+        return (retval, out)
 
     def link(self, target, verbose = False):
         """
@@ -90,6 +100,7 @@ class Toolchain:
         if self.options["linker"]:
             args.append(self.options["linker"])
             args.append(os.path.join(os.path.relpath(target.outputdir, target.cwd), target.outputname + "." + self.linkerfileext))
+        args += target.linkeroptions
         args.append("-o")
         args.append(os.path.join(os.path.relpath(target.outputdir, target.cwd), target.outputname + ".elf"))
 
@@ -99,7 +110,7 @@ class Toolchain:
                 verbosestring += a + " "
             sys.stdout.write(verbosestring + "\n")
         else:
-            sys.stdout.write("linking target " + target.name + "...\n")
+            sys.stdout.write(colorama.Fore.CYAN + "linking target " + target.name + "...\n" + colorama.Style.RESET_ALL)
 
         popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
         (out,err) = popen.communicate()
