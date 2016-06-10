@@ -89,14 +89,9 @@ class Target:
                                 xml.SubElement(xmlfile, "FileName").text = f.name
                                 xml.SubElement(xmlfile, "FileType").text = "1"
                                 xml.SubElement(xmlfile, "FilePath").text = os.path.relpath(f.path, os.path.dirname(self.project.uvfile))
-                                print f.path
                         break
                 break
         tree.write(self.project.uvfile)
-
-
-
-
 
     def allFiles(self):
         files = []
@@ -142,18 +137,18 @@ class Target:
                 if not os.path.exists(outfile) or outdated:
                     (status, output) = toolchain.compile(self, f)
                     if not status:
-                        print(colorama.Fore.RED + output + colorama.Style.RESET_ALL)
-                        build_failed = True # Still keep going.
+                        for line in output.splitlines():
+                            print(line)
                     elif len(output) > 0:
-                        print(output)
+                        for line in output.splitlines():
+                            print(line)
         if build_failed:
             print(colorama.Fore.RED + "Build failed, unable to link project." + colorama.Style.RESET_ALL)
             return 1
 
         (status, output) = toolchain.link(self)
-        if not status:
-            sys.stdout.write(colorama.Fore.RED)
-        sys.stdout.write(output + colorama.Style.RESET_ALL)
+        for line in output.splitlines():
+            print(line)
 
         if status and self.genhex:
             print("generating " + self.outputname + ".hex...")

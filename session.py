@@ -47,3 +47,8 @@ class Session:
         else:
             with open(self.tempstore, "w") as f:
                 f.write(json.JSONEncoder().encode(self.options))
+
+    def delete(self):
+        self.options = {}
+        if path.exists(self.tempstore):
+            os.remove(self.tempstore)
