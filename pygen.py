@@ -6,7 +6,7 @@ from toolchain_armcc import *
 
 import xml.etree.ElementTree as xml
 from json import encoder, decoder
-import os.path
+import os
 import exceptions
 import sys
 import shutil
@@ -136,12 +136,8 @@ class Target:
                         outdated = True
                 if not os.path.exists(outfile) or outdated:
                     (status, output) = toolchain.compile(self, f)
-                    if not status:
-                        for line in output.splitlines():
-                            print(line)
-                    elif len(output) > 0:
-                        for line in output.splitlines():
-                            print(line)
+                    if len(output) > 0:
+                            sys.stdout.write(output)
         if build_failed:
             print(colorama.Fore.RED + "Build failed, unable to link project." + colorama.Style.RESET_ALL)
             return 1
@@ -155,6 +151,10 @@ class Target:
             elf = os.path.join(self.outputdir, self.outputname + ".elf")
             (status, output) = toolchain.toHex(self, elf)
         return status
+
+    def clean(self):
+        for f in os.listdir(self.outputdir):
+            os.remove(os.path.join(self.outputdir, f))
 
     def save(self):
         pass
@@ -344,7 +344,7 @@ class Project:
         pass
 
 
-def findroot(cwd):
+def findroot(cwd = "."):
     path = os.path.abspath(cwd)
     while not os.path.dirname(path) == path:
         if ".git" in os.listdir(path):

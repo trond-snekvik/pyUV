@@ -32,6 +32,7 @@ class Toolchain:
         Returns a tuple of (Success (True/False), output)
         """
         retval = True
+        output = ""
 
         # force argument to become a list
         if sourcefiles.__class__ != list:
@@ -63,8 +64,6 @@ class Toolchain:
                 for a in args:
                     verbosestring += a + " "
                 output = verbosestring
-            else:
-                output = colorama.Fore.CYAN + "compiling " + sourcefile.name + "...\n" + colorama.Style.RESET_ALL
 
             #try:
             popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
@@ -75,11 +74,10 @@ class Toolchain:
                 output += err
             elif len(out) > 0:
                 output += out
-            sys.stdout.write(output)
         #except Exception as e:
         #    print args
         #    return (False, e)
-        return (retval, out)
+        return (retval, output)
 
     def link(self, target, verbose = False):
         """
