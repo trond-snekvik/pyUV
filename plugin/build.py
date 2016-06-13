@@ -49,7 +49,9 @@ if __name__ == "__main__":
         sys.argv.pop(sys.argv.index("--clean"))
 
 
-    toolchain = toolchain_armcc.ToolchainARMCC("C:\\Keil_v5\\ARM\\ARMCC_505u2")
+    arm_dir = "C:\\Keil_v5\\ARM"
+    latest_arm = [d for d in os.listdir(arm_dir) if "ARMCC" in d][-1]
+    toolchain = toolchain_armcc.ToolchainARMCC(os.path.join(arm_dir, latest_arm))
     print("Changing directory to " + os.path.relpath(target.cwd))
     if len(sys.argv) == 0:
         print "Building all..."
