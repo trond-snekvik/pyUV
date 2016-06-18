@@ -1,114 +1,83 @@
 fu! UV#Selected()
-    echo g:UV#sel#opt . ': ' . getline(".")
-    let g:UV#sel#sel = line(".") - 1
+endf
+fu! UV#Select(opt)
+endf
+"py import vimUV
+let g:uvpydir= fnamemodify(resolve(expand('<sfile>:p')), ':h')
 python << EOPY
+import sys
 import vim
-import session
-import pygen
+import os
 
-root = pygen.findroot(".")
-s = session.Session(root)
-option = vim.eval("g:UV#sel#opt")
-selected = vim.eval("g:UV#sel#sel")
-if option == "project":
-    selected = pygen.findUVprojects(root)[int(selected)]
-if option == "target":
-    project = pygen.Project()
-    project.parseUV(s["project"])
-    selected = project.targets[int(selected)].name
-s[option] = selected
+plugindir = os.path.abspath(vim.eval('g:uvpydir'))
+if not plugindir in sys.path:
+    sys.path.append(plugindir)
+# now safe to import our module
+import vimUV
+import session
 EOPY
 
-    hi! link CursorLine NONE
-    hi! link Cursor NONE
-    q!
-    if g:UV#task == "build"
-        call UV#Build()
-    endif
+fu! UV#Selected()
+    let g:UV#sel#sel = line(".") - 1
 
-:endfunction
+    py vimUV.selected()
+
+    q!
+    if g:UV#sel#opt == "project"
+        py vimUV.seltarget()
+    else
+        call UVupdateAirline()
+    endif
+endf
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 fu! UV#Select(opt)
     new
     let g:UV#sel#opt = a:opt
     setlocal hidden
+    setlocal buftype=nofile
+    "setlocal bufhidden=hide
+    setlocal noswapfile
+    setlocal nobuflisted
     setlocal cursorline
     setlocal colorcolumn=999
-    hi! link CursorLine Visual
-    hi! link Cursor Visual
+    setlocal nowrap
     nnoremap <buffer> <silent> <CR> :call UV#Selected()<CR>
     nnoremap <buffer> <silent> <Esc> :q!<CR>
-    au BufLeave <buffer> :q!
+    au BufLeave <buffer> :q! | :call UVupdateAirline()
 
-
-:endfunction
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-fu! UV#Forget()
-python << EOPY
-import session
-import pygen
-
-root = pygen.findroot(".")
-s = session.Session(root)
-s.delete()
-EOPY
-:endfunction
+endf
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-fu! UV#Build()
-    let g:UV#task = "build"
-python << EOPY
-import session
-from toolchain_armcc import *
-import pygen
-import vim
-import os
+fu! UV#SelProj() " Select a project and target to use
+    py vimUV.selproj()
+endf
 
-def build():
-    root = pygen.findroot(".")
-    s = session.Session(root)
-    if "project" in s:
-        project = pygen.Project()
-        project.parseUV(s["project"])
-        if "target" in s:
-            for t in project.targets:
-                if t.name == s["target"]:
-                    target = t
-                    break
-            target.build(ToolchainARMCC("C:\\Keil_v5\\ARM\\ARMCC"))
-        else:
-            if len(project.targets) is 0:
-                print("No targets found...")
-                return
-            vim.command("call UV#Select(\"target\")")
-            for t in project.targets:
-                vim.current.buffer.append(t.name)
-            vim.command("resize " + str(len(project.targets) + 1))
+fu! UV#SelTarget() " Select a target within current project
+    py vimUV.seltarget()
+endf
 
-            #the first line is now empty
-            vim.current.buffer[0] = None
+let g:uv_focus_gained = 1
+fu! UVupdateAirline()
+    py vimUV.getsession()
+    if (exists('g:uvproject') && exists('g:uvtarget'))
+        let g:airline_section_b = airline#section#create_left([g:uvproject, g:uvtarget])
+        AirlineRefresh
+    :endif
+endfunction
 
-    else:
-        projs = pygen.findUVprojects(root)
-        bufsize = min(len(projs) + 1, 10)
-        if len(projs) is 0:
-            print("No UV projects found...")
-            return
-        vim.command("call UV#Select(\"project\")")
-        projs = [(os.path.basename(proj), proj) for proj in projs]
-        maxnamelen = len(max(projs, key = lambda p: len(p[0]))[0])
-        for p in projs:
-            vim.current.buffer.append(p[0] + " " * (maxnamelen + 2 - len(p[0])) + "(" + os.path.relpath(p[1], root) + ")")
-        vim.command("resize " + str(bufsize))
+fu! UVsetdevicefilter(filter)
+    py vimUV.s["filter"]= vim.eval("a:filter")
+endfunction
 
-        #the first line is now empty
-        vim.current.buffer[0] = None
+fu! UVfocusGained()
+    if g:uv_focus_gained
+        call UVupdateAirline()
+        let g:uv_focus_gained=0
+    endif
+endf
 
-build()
+au FocusGained *.c,*.h :call UVfocusGained()
+au FocusLost *.c,*.h :let g:uv_focus_gained=1
 
-EOPY
-
-:endfunction
-
+com -nargs=1 UVfilter :call UVsetdevicefilter(<args>)

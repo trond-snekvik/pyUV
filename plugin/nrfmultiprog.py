@@ -20,7 +20,7 @@ def getDevices(beginsWith=None):
         devs = [dev for dev in devs if dev.startswith(beginsWith)]
     return devs
 
-def progDev(device, hexfile, erase=False, reset=True):
+def progDev(device, hexfile, erase=False, reset=True, verbose=False):
     if device is None:
         snrArg = ""
     else:
@@ -32,9 +32,10 @@ def progDev(device, hexfile, erase=False, reset=True):
         out = nrfjprog(snrArg + "--program " + hexfile + " --sectorerase")
     if "WARNING: A UICR write operation has been requested but UICR has not been" in out:
         sys.stdout.write("UICR->BOOTLOADERADDR: 0x" + nrfjprog(snrArg + "--memrd 0x10001014").split()[1].strip() + "\n")
-    elif len(out) > 0:
+    elif len(out) > 0 and verbose:
         out = [device + ": " + line for line in out.splitlines()]
-        sys.stdout.write(device + ": " + out)
+        for line in out:
+            sys.stdout.write(line + "\n")
 
     if reset:
         nrfjprog(snrArg + "-r")

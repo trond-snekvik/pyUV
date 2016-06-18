@@ -139,22 +139,25 @@ class Target:
                     if len(output) > 0:
                             sys.stdout.write(output)
         if build_failed:
-            print(colorama.Fore.RED + "Build failed, unable to link project." + colorama.Style.RESET_ALL)
-            return 1
+            print("Error: Build failed, unable to link project.")
+            return False
 
         (status, output) = toolchain.link(self)
         for line in output.splitlines():
             print(line)
 
         if status and self.genhex:
-            print("generating " + self.outputname + ".hex...")
+            print("Generating " + self.outputname + ".hex...")
             elf = os.path.join(self.outputdir, self.outputname + ".elf")
             (status, output) = toolchain.toHex(self, elf)
         return status
 
     def clean(self):
         for f in os.listdir(self.outputdir):
-            os.remove(os.path.join(self.outputdir, f))
+            try:
+                os.remove(os.path.join(self.outputdir, f))
+            except:
+                pass # for some files, Keil will try to crash us. Ignore it.
 
     def save(self):
         pass

@@ -5,14 +5,20 @@
 
 let current_compiler = "uv"
 let s:scriptDir = expand('<sfile>:p:h')
-echom s:scriptDir
 
-let &l:makeprg='python ' . s:scriptDir . '\..\plugin\build.py'
+let &makeprg='C:\Python27\python ' . '"' . s:scriptDir . '\..\plugin\build.py"'
 
 setlocal errorformat=
     \%W\"%f\"\\,\ line\ %l:\ %tarning:\ \ #%n-D:\ %m,
     \%E\"%f\"\\,\ line\ %l:\ %trror:\ \ #%n:\ %m,
-    \%-DChanging\ directory\ to\ %f,
+    \%E\"%f\"\\,\ line\ %l:\ %trror:\ At\ end\ of\ source:\ \ #%n:\ %m,
     \%Z\ \ \ \ %p,
+    \%trror:\ L%*[^:]:\ %m,
+    \%DChanging\ directory\ to\ %f,
     \%C\ %.%#,
-    \%-G%.%#
+    \%-GBuilding\ %.%#,
+    \%-GLinking\ %.%#,
+    \%-GCompiling\ %.%#,
+    \%-GGenerating\ %.%#,
+    \%-G%.%#,
+

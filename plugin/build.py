@@ -2,6 +2,7 @@ import pygen
 import session
 import toolchain
 import toolchain_armcc
+import nrfmultiprog
 import sys
 import os
 
@@ -37,7 +38,7 @@ if __name__ == "__main__":
     if "--target" in sys.argv:
         targetstr = consumearg("--target")
         target = [t for t in project.targets if t.name == targetstr][0]
-    elif "target" in session:
+    elif "target" in session and len(session["target"]) > 0:
         target = [t for t in project.targets if t.name == session["target"]][0]
     else:
         sys.stderr.write("Error: Please specify a target!\n");
@@ -47,6 +48,17 @@ if __name__ == "__main__":
     if "--clean" in sys.argv:
         clean = True
         sys.argv.pop(sys.argv.index("--clean"))
+    if "-c" in sys.argv:
+        clean = True
+        sys.argv.pop(sys.argv.index("-c"))
+
+    flash = False
+    if "--flash" in sys.argv:
+        flash = True
+        sys.argv.pop(sys.argv.index("--flash"))
+    if "-f" in sys.argv:
+        flash = True
+        sys.argv.pop(sys.argv.index("-f"))
 
 
     arm_dir = "C:\\Keil_v5\\ARM"
@@ -57,7 +69,9 @@ if __name__ == "__main__":
         print "Building all..."
         if clean:
             target.clean()
-        target.build(toolchain)
+        success = target.build(toolchain)
+        if success and flash:
+            nrfmultiprog.program(os.path.join(target.cwd, target.outputdir, target.outputname + ".hex"), session["filter"])
     else:
         print(sys.argv)
         files = [f for f in target.allFiles() if f.name in sys.argv]

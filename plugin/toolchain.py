@@ -64,6 +64,8 @@ class Toolchain:
                 for a in args:
                     verbosestring += a + " "
                 output = verbosestring
+            else:
+                output = "Compiling " + sourcefile.name + "...\n"
 
             #try:
             popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
@@ -108,7 +110,7 @@ class Toolchain:
                 verbosestring += a + " "
             sys.stdout.write(verbosestring + "\n")
         else:
-            sys.stdout.write(colorama.Fore.CYAN + "linking target " + target.name + "...\n" + colorama.Style.RESET_ALL)
+            sys.stdout.write("Linking target " + target.name + "...\n")
 
         popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=target.cwd)
         (out,err) = popen.communicate()

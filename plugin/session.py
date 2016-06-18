@@ -1,11 +1,12 @@
+import pygen
 import hashlib
 import binascii
 import json
 import os
+import sys
 from os import path, environ
 
 class Session:
-
     def __init__(self, directory):
         self.directory = directory
         self.options = {}
@@ -52,3 +53,17 @@ class Session:
         self.options = {}
         if path.exists(self.tempstore):
             os.remove(self.tempstore)
+
+def getlocal():
+    return Session(pygen.findroot()).options
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Please state a single argument to check for in the session.")
+    values = getlocal()
+    if sys.argv[1] in values:
+        if os.path.exists(values[sys.argv[1]]):
+            print os.path.relpath(values[sys.argv[1]])
+        else:
+            print values[sys.argv[1]]
+
