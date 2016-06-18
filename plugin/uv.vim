@@ -2,7 +2,7 @@ fu! UV#Selected()
 endf
 fu! UV#Select(opt)
 endf
-"py import vimUV
+"import vimUV, need to do some trickery to add the directory to path first.
 let g:uvpydir= fnamemodify(resolve(expand('<sfile>:p')), ':h')
 python << EOPY
 import sys

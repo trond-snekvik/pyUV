@@ -47,7 +47,7 @@ def selected():
     selected = vim.eval("g:UV#sel#sel")
     if option == "project":
         selected = pygen.findUVprojects(root)[int(selected)]
-        s["target"] = ""
+        s.pop("target")
     if option == "target":
         project = pygen.Project()
         project.parseUV(s["project"])
